@@ -1,0 +1,200 @@
+# Imported modules
+import pygame
+import sys
+
+# Imported functions
+from functions.is_halt_requested import is_halt_requested
+from functions.movement import horizontal_bar_movement, spawn_ball, change_ball_speed
+from functions.movement import get_ball_direction_change
+
+pygame.init()
+FRAMES_PER_SECOND = 60
+SCREEN_WIDTH = 1024
+SCREEN_HEIGHT = 768
+BUTTON_PUSH_WAIT = 100
+BACKGROUND_COLOR = (0, 0, 0)
+COLOR_WHITE = (255, 255, 255)
+pygame.display.set_caption("Werkplaats 1: PyGame Catch The Ball")
+
+clock = pygame.time.Clock()
+canvas = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+#grote letter type
+font = pygame.font.SysFont('Rockwell', 50)
+click = False
+
+game_speed = 5
+x_direction = 1
+y_direction = 1
+game_over = False
+button_push_timer = 0
+score = 0
+
+game_running = True
+in_main_menu = True  # Start in het hoofdmenu
+
+def draw_text(text, font, color, surface, x, y):
+    text_obj = font.render(text, 1, color)
+    text_rect = text_obj.get_rect()
+    text_rect.center = (x, y)
+    surface.blit(text_obj, text_rect,)
+
+
+def main_menu():
+    global in_main_menu, click
+    while in_main_menu:
+        canvas.fill((100,100,100))
+        draw_text("Main menu", font, (255,255,255), canvas, SCREEN_WIDTH // 2, 25)
+
+        mx, my = pygame.mouse.get_pos()
+
+        knop1 = pygame.Rect(412, 75, 200,50)
+        knop2 = pygame.Rect(412, 175, 200, 50)
+
+        if knop1.collidepoint(mx, my):
+            draw_text("start game", font, (255,0,0), canvas, SCREEN_WIDTH // 2, 100)
+            if click:
+                in_main_menu = False
+        else:
+            draw_text("start game", font, (255,255,255), canvas, SCREEN_WIDTH // 2, 100)
+
+
+        if knop2.collidepoint(mx, my):
+            draw_text("Quit", font, (255,0,0), canvas, SCREEN_WIDTH // 2, 200)
+            if click:
+                sys.exit()
+        else:
+            draw_text("Quit", font, (255,255,255), canvas, SCREEN_WIDTH // 2, 200)
+
+        # het boxen van de knopen
+        #pygame.draw.rect(screen, (255,0,0), knop1)
+        #pygame.draw.rect(screen, (255,0,0), knop2)
+
+        click = False
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            #controleert of een toets wordt ingedrukt
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    click = True
+
+        pygame.display.update()
+        clock.tick(FRAMES_PER_SECOND)
+
+
+def game_loop():
+    global x_direction, y_direction, in_main_menu, game_over, game_speed, highscore
+    horizontal_bar_movement(catch_bar, SCREEN_WIDTH, game_speed)
+
+    x_direction, y_direction, game_over  = get_ball_direction_change(
+        current_x_direction=x_direction,
+        current_y_direction=y_direction,
+        position_rect=ball,
+        screen_boundary_x=SCREEN_WIDTH,
+        screen_boundary_y=SCREEN_HEIGHT,
+    )
+    if game_over:
+        print("Game Over")
+    else:
+        global score
+        previous_score = 0
+        logo_coordinate_change = [x_direction * game_speed, y_direction * game_speed]
+        ball.move_ip(logo_coordinate_change)
+        draw_text(f"Score: {score}", font, COLOR_WHITE, canvas, SCREEN_WIDTH // 2, 100)
+
+        if ball.colliderect(catch_bar):
+            score += 1
+            print("Ball catch!")
+            spawn_ball(ball, SCREEN_WIDTH)
+            game_speed, previous_score  = change_ball_speed(score,  previous_score , game_speed)
+        pygame.draw.circle(canvas, "white", ball.center, 50)
+        #Blit catch bar
+        canvas.blit(rectangle_surface, catch_bar)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            # controleert of een toets wordt ingedrukt
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    in_main_menu = True
+
+
+        # Check for halt request or quit events
+        halt_requested = is_halt_requested()
+        if halt_requested:
+            return
+
+
+# Initialize pictures and shapes
+# Rectangle for bar
+ball = pygame.Rect(0,0, 100,100 )
+# ball.move_ip(get_random_y(ball.width, SCREEN_WIDTH), 0)
+spawn_ball(ball, SCREEN_WIDTH)
+
+# Initialize rectangle
+rectangle_width = SCREEN_WIDTH // 2
+rectangle_surface = pygame.Surface((rectangle_width, 50))
+rectangle_surface.fill(COLOR_WHITE)
+catch_bar = rectangle_surface.get_rect()
+
+# Initialize catch bar start position
+catchbar_margin_bottom = catch_bar.height + 10
+catchbar_height_position = SCREEN_HEIGHT - catchbar_margin_bottom
+splitted_catchbar = catch_bar.width / 2
+catchbar_width_center_position = (SCREEN_WIDTH // 2) - splitted_catchbar
+catch_bar.move_ip(catchbar_width_center_position, catchbar_height_position)
+
+while True:
+    halt_requested = is_halt_requested()
+    if halt_requested:
+        break
+    elif in_main_menu:
+        main_menu()
+    canvas.fill(BACKGROUND_COLOR)
+
+    if not game_over and not in_main_menu:
+        game_loop()
+    pygame.display.flip()
+    clock.tick(FRAMES_PER_SECOND)
+
+
+if game_over:
+    game_over = False
+
+def game_over_screen(screen):
+    global game_over, click
+    while game_over == True:
+        draw_text("GAME OVER!,", font, (255,255,255), canvas, 2 , 100)
+
+        mx, my = pygame.mouse.get_pos()
+
+        knop3 = pygame.Rect(412, 75, 200, 50)
+        knop4 = pygame.Rect(412, 175, 200, 50)
+
+        if knop3.collidepoint(mx, my):
+            draw_text("Restart", font, (255,0,0), canvas, SCREEN_WIDTH // 2, 100)
+            if click:
+                game_loop()
+        else:
+            draw_text("Restart", font, (255,255,255), canvas, SCREEN_WIDTH // 2, 100)
+
+
+        if knop4.collidepoint(mx, my):
+            draw_text("Quit", font, (255,0,0), canvas, SCREEN_WIDTH // 2, 200)
+            if click:
+                sys.exit()
+        else:
+            draw_text("Quit", font, (255,255,255), canvas, SCREEN_WIDTH // 2, 200)
+
+
+
+
+
+print("Game over!")
